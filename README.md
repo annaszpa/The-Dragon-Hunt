@@ -1,2 +1,2 @@
 # The-Dragon-Hunt
-A location-based mobile game where players explore Kraków, discover real-world locations, and unlock virtual dragons using GPS and phone interactions.
+Kraków Dragon Quest is a mobile location-based game where real places in Kraków become interactive points to explore. The main idea is that players go out into the city, discover different locations, and unlock virtual dragons connected to those places. When a player gets close to a specific place, they can activate an interactive egg. To unlock a dragon, the player simply shakes their phone.
