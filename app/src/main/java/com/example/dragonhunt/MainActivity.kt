@@ -25,6 +25,7 @@ class MainActivity : ComponentActivity() {
             DragonHuntTheme {
                 var currentScreen by remember { mutableStateOf("splash") }
                 var selectedMap by remember { mutableStateOf<MapData?>(null) }
+                var selectedDragonName by remember { mutableStateOf("") }
 
                 when (currentScreen) {
                     "splash" -> SplashScreen(
@@ -58,12 +59,11 @@ class MainActivity : ComponentActivity() {
 
                     "main_map" -> MainMapScreen(
                         mapId = selectedMap?.id ?: "wawel-server",
-                        initialLat = selectedMap?.centerLat ?: 50.0619,
-                        initialLng = selectedMap?.centerLng ?: 19.9368,
                         onBack = {
                             currentScreen = "map_selection"
                         },
-                        onLocationClick = { _ ->
+                        onLocationClick = { location ->
+                            selectedDragonName = location.name
                             currentScreen = "challenge"
                         },
                         onCollectionClick = {
@@ -72,7 +72,7 @@ class MainActivity : ComponentActivity() {
                     )
 
                     "challenge" -> ChallengeScreen(
-                        dragonName = "Mystic Dragon",
+                        dragonName = selectedDragonName,
                         onBack = {
                             currentScreen = "main_map"
                         },

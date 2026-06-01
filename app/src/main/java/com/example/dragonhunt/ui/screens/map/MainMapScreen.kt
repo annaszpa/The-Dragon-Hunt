@@ -1,5 +1,12 @@
 package com.example.dragonhunt.ui.screens.map
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.location.Location
+import android.location.LocationManager
+import android.os.Looper
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.*
@@ -10,25 +17,54 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
 import com.example.dragonhunt.model.LocationData
 import com.example.dragonhunt.network.RetrofitClient
-import org.maplibre.android.annotations.MarkerOptions
 import org.maplibre.android.camera.CameraPosition
+import org.maplibre.android.camera.CameraUpdateFactory
 import org.maplibre.android.geometry.LatLng
 import org.maplibre.android.maps.MapView
+import org.maplibre.android.maps.MapLibreMap
 import org.maplibre.android.maps.Style
 
 @Composable
 fun MainMapScreen(
     mapId: String,
-    initialLat: Double,
-    initialLng: Double,
     onBack: () -> Unit,
-    onLocationClick: (String) -> Unit,
+    onLocationClick: (LocationData) -> Unit,
     onCollectionClick: () -> Unit
 ) {
     val context = LocalContext.current
     var locations by remember { mutableStateOf<List<LocationData>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
     val mapView = remember { MapView(context) }
+    val locationManager = remember {
+        context.getSystemService(android.content.Context.LOCATION_SERVICE) as LocationManager
+    }
+    var currentLocation by remember { mutableStateOf<Location?>(null) }
+    var mapInstance by remember { mutableStateOf<MapLibreMap?>(null) }
+    var isStyleLoaded by remember { mutableStateOf(false) }
+    var hasLocationPermission by remember {
+        mutableStateOf(
+            context.checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED ||
+                context.checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
+        )
+    }
+    val permissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { result ->
+        hasLocationPermission = result[Manifest.permission.ACCESS_FINE_LOCATION] == true ||
+            result[Manifest.permission.ACCESS_COARSE_LOCATION] == true
+    }
+    val fallbackCenter = LatLng(50.0619, 19.9368)
+
+    LaunchedEffect(Unit) {
+        if (!hasLocationPermission) {
+            permissionLauncher.launch(
+                arrayOf(
+                    Manifest.permission.ACCESS_FINE_LOCATION,
+                    Manifest.permission.ACCESS_COARSE_LOCATION
+                )
+            )
+        }
+    }
 
     LaunchedEffect(mapId) {
         try {
@@ -54,30 +90,95 @@ fun MainMapScreen(
         }
     }
 
+    DisposableEffect(locationManager, hasLocationPermission) {
+        if (!hasLocationPermission) {
+            return@DisposableEffect onDispose { }
+        }
+
+        val hasFine = context.checkSelfPermission(
+            Manifest.permission.ACCESS_FINE_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED
+        val hasCoarse = context.checkSelfPermission(
+            Manifest.permission.ACCESS_COARSE_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED
+
+        if (!hasFine && !hasCoarse) {
+            return@DisposableEffect onDispose { }
+        }
+
+        val provider = when {
+            locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER) -> LocationManager.GPS_PROVIDER
+            locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER) -> LocationManager.NETWORK_PROVIDER
+            else -> null
+        }
+
+        if (provider == null) {
+            return@DisposableEffect onDispose { }
+        }
+
+        val listener = android.location.LocationListener { location ->
+            currentLocation = location
+        }
+
+        try {
+            currentLocation = locationManager.getLastKnownLocation(provider)
+            locationManager.requestLocationUpdates(
+                provider,
+                2000L,
+                2f,
+                listener,
+                Looper.getMainLooper()
+            )
+        } catch (_: SecurityException) {
+
+        }
+
+        onDispose {
+            locationManager.removeUpdates(listener)
+        }
+    }
+
+    LaunchedEffect(currentLocation, mapInstance) {
+        val loc = currentLocation ?: return@LaunchedEffect
+        val map = mapInstance ?: return@LaunchedEffect
+        val userLatLng = LatLng(loc.latitude, loc.longitude)
+        map.animateCamera(CameraUpdateFactory.newLatLng(userLatLng))
+    }
+
+    LaunchedEffect(isStyleLoaded, locations, currentLocation, mapInstance) {
+        if (!isStyleLoaded) return@LaunchedEffect
+        val map = mapInstance ?: return@LaunchedEffect
+        val userLatLng = currentLocation?.let { LatLng(it.latitude, it.longitude) }
+        addMarkersToMap(context, map, locations, userLatLng, onLocationClick)
+    }
+
     Box(modifier = Modifier.fillMaxSize()) {
         AndroidView(
             modifier = Modifier.fillMaxSize(),
             factory = {
                 mapView.apply {
                     getMapAsync { map ->
+                        mapInstance = map
+                        map.uiSettings.isCompassEnabled = false
                         map.setStyle(Style.Builder().fromUri("https://tiles.openfreemap.org/styles/liberty")) {
+                            isStyleLoaded = true
                             map.cameraPosition = CameraPosition.Builder()
-                                .target(LatLng(initialLat, initialLng))
-                                .zoom(15.0)
+                                .target(fallbackCenter)
+                                .zoom(13.5)
                                 .build()
-
-                            if (locations.isNotEmpty()) {
-                                addMarkersToMap(map, locations, onLocationClick)
-                            }
                         }
                     }
                 }
             },
             update = { view ->
                 view.getMapAsync { map ->
+                    mapInstance = map
+                    map.uiSettings.isCompassEnabled = false
                     val style = map.style
-                    if (style != null && style.isFullyLoaded && locations.isNotEmpty()) {
-                        addMarkersToMap(map, locations, onLocationClick)
+                    if (style != null && style.isFullyLoaded) {
+                        if (!isStyleLoaded) {
+                            isStyleLoaded = true
+                        }
                     }
                 }
             }
@@ -101,23 +202,16 @@ fun MainMapScreen(
             onClick = onCollectionClick,
             modifier = Modifier.statusBarsPadding().align(Alignment.TopEnd)
         )
-    }
-}
 
-private fun addMarkersToMap(
-    map: org.maplibre.android.maps.MapLibreMap,
-    locations: List<LocationData>,
-    onLocationClick: (String) -> Unit
-) {
-    map.clear()
-    locations.forEach { loc ->
-        map.addMarker(MarkerOptions()
-            .position(LatLng(loc.lat, loc.lng))
-            .title(loc.name))
+        MapOverlayButton(
+            text = "MY LOCATION",
+            onClick = {
+                val loc = currentLocation ?: return@MapOverlayButton
+                val map = mapInstance ?: return@MapOverlayButton
+                val userLatLng = LatLng(loc.latitude, loc.longitude)
+                map.animateCamera(CameraUpdateFactory.newLatLngZoom(userLatLng, 16.0))
+            },
+            modifier = Modifier.navigationBarsPadding().align(Alignment.BottomEnd)
+        )
     }
-    map.setOnMarkerClickListener { marker ->
-        locations.find { it.name == marker.title }?.let { onLocationClick(it.id) }
-        true
-    }
-
 }

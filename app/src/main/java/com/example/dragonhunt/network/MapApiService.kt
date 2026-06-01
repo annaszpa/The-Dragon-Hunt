@@ -1,5 +1,7 @@
 package com.example.dragonhunt.network
 
+import android.os.Build
+import com.example.dragonhunt.BuildConfig
 import okhttp3.OkHttpClient
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
@@ -33,7 +35,22 @@ interface MapApiService {
 }
 
 object RetrofitClient {
-    private const val BASE_URL = "http://10.0.2.2:8080/"
+    private fun isEmulator(): Boolean {
+        return Build.FINGERPRINT.startsWith("generic") ||
+            Build.FINGERPRINT.startsWith("unknown") ||
+            Build.MODEL.contains("google_sdk") ||
+            Build.MODEL.contains("Emulator") ||
+            Build.MODEL.contains("Android SDK built for x86") ||
+            Build.MANUFACTURER.contains("Genymotion") ||
+            (Build.BRAND.startsWith("generic") && Build.DEVICE.startsWith("generic")) ||
+            Build.PRODUCT == "google_sdk"
+    }
+
+    private fun baseUrl(): String {
+        val host = if (isEmulator()) "10.0.2.2" else BuildConfig.SERVER_HOST
+        val port = BuildConfig.SERVER_PORT
+        return "http://$host:$port/"
+    }
 
     private val okHttpClient = OkHttpClient.Builder()
         .connectTimeout(30, TimeUnit.SECONDS)
@@ -43,7 +60,7 @@ object RetrofitClient {
 
     val instance: MapApiService by lazy {
         Retrofit.Builder()
-            .baseUrl(BASE_URL)
+            .baseUrl(baseUrl())
             .client(okHttpClient)
             .addConverterFactory(GsonConverterFactory.create())
             .build()
