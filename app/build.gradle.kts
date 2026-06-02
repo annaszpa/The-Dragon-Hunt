@@ -1,5 +1,6 @@
 plugins {
     alias(libs.plugins.android.application)
+    alias(libs.plugins.ksp)
     alias(libs.plugins.kotlin.compose)
 }
 
@@ -13,6 +14,11 @@ android {
         targetSdk = 36
         versionCode = 1
         versionName = "1.0"
+
+        val serverHost = (project.findProperty("server.host") as String?) ?: "192.168.0.123"
+        val serverPort = (project.findProperty("server.port") as String?) ?: "8080"
+        buildConfigField("String", "SERVER_HOST", "\"$serverHost\"")
+        buildConfigField("String", "SERVER_PORT", "\"$serverPort\"")
     }
 
     buildTypes {
@@ -22,12 +28,17 @@ android {
     }
 
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    }
+
+    composeOptions {
+        kotlinCompilerExtensionVersion = "1.5.15"
     }
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 
@@ -45,6 +56,11 @@ dependencies {
     implementation("org.maplibre.gl:android-sdk:11.6.0")
     implementation("com.squareup.retrofit2:retrofit:2.9.0")
     implementation("com.squareup.retrofit2:converter-gson:2.9.0")
+    implementation(libs.google.play.services.location)
+
+    implementation(libs.androidx.room.runtime)
+    implementation(libs.androidx.room.ktx)
+    ksp(libs.androidx.room.compiler)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
@@ -52,5 +68,4 @@ dependencies {
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
-
 }

@@ -9,7 +9,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
@@ -18,14 +19,18 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.dragonhunt.data.ProgressRepository
+import com.example.dragonhunt.data.local.UnlockedLocationEntity
 import com.example.dragonhunt.model.DragonInfo
 import com.example.dragonhunt.model.RouteCollection
 
 @Composable
 fun CollectionScreen(
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    progressRepository: ProgressRepository
 ) {
-    val collections = rememberSampleCollections()
+    val unlockedLocations by progressRepository.observeAllUnlocked().collectAsState(initial = emptyList())
+    val collections = remember(unlockedLocations) { unlockedLocations.toRouteCollections() }
 
     Box(
         modifier = Modifier
@@ -45,13 +50,23 @@ fun CollectionScreen(
         ) {
             CollectionHeader(onBack = onBack)
 
-            LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                verticalArrangement = Arrangement.spacedBy(16.dp),
-                contentPadding = PaddingValues(bottom = 32.dp)
-            ) {
-                items(collections) { route ->
-                    RouteExpandableCard(route)
+            if (collections.isEmpty()) {
+                Box(modifier = Modifier.fillMaxSize()) {
+                    Text(
+                        text = "No dragons unlocked yet. Explore the map to find them!",
+                        color = Color(0xFFE5DDD3),
+                        modifier = Modifier.align(Alignment.Center)
+                    )
+                }
+            } else {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                    contentPadding = PaddingValues(bottom = 32.dp)
+                ) {
+                    items(collections) { route ->
+                        RouteExpandableCard(route)
+                    }
                 }
             }
         }
@@ -91,27 +106,20 @@ private fun CollectionHeader(onBack: () -> Unit) {
     }
 }
 
-@Composable
-private fun rememberSampleCollections() = listOf(
-    RouteCollection(
-        routeName = "Old Town",
-        dragons = listOf(
-            DragonInfo("Golden King", "Guardian of the Main Square", true),
-            DragonInfo("Cloth Hall Keeper", "Lives under the Sukiennice", true),
-            DragonInfo("St. Mary's Sentinel", "Watches from the towers", false)
-        )
-    ),
-    RouteCollection(
-        routeName = "Wawel Hill",
-        dragons = listOf(
-            DragonInfo("The Great Wawel Dragon", "The legendary fire-breather", true),
-            DragonInfo("Cave Lurker", "Hidden deep in the dragon's den", false)
-        )
-    ),
-    RouteCollection(
-        routeName = "Kazimierz",
-        dragons = listOf(
-            DragonInfo("Jewish Quarter Sage", "Wise protector of the streets", true)
-        )
-    )
-)
+private fun List<UnlockedLocationEntity>.toRouteCollections(): List<RouteCollection> {
+    return this
+        .groupBy { it.mapName }
+        .map { (mapName, locations) ->
+            RouteCollection(
+                routeName = mapName,
+                dragons = locations.map { location ->
+                    DragonInfo(
+                        name = location.locationName,
+                        description = location.description,
+                        unlocked = true
+                    )
+                }
+            )
+        }
+        .sortedBy { it.routeName }
+}

@@ -1,10 +1,9 @@
 package com.example.dragonhunt.ui.screens.map
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.content.pm.PackageManager
 import android.location.Location
-import android.location.LocationManager
-import android.os.Looper
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
@@ -17,6 +16,11 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
 import com.example.dragonhunt.model.LocationData
 import com.example.dragonhunt.network.RetrofitClient
+import com.google.android.gms.location.LocationCallback
+import com.google.android.gms.location.LocationRequest
+import com.google.android.gms.location.LocationResult
+import com.google.android.gms.location.LocationServices
+import com.google.android.gms.location.Priority
 import org.maplibre.android.camera.CameraPosition
 import org.maplibre.android.camera.CameraUpdateFactory
 import org.maplibre.android.geometry.LatLng
@@ -24,6 +28,7 @@ import org.maplibre.android.maps.MapView
 import org.maplibre.android.maps.MapLibreMap
 import org.maplibre.android.maps.Style
 
+@SuppressLint("MissingPermission")
 @Composable
 fun MainMapScreen(
     mapId: String,
@@ -35,8 +40,8 @@ fun MainMapScreen(
     var locations by remember { mutableStateOf<List<LocationData>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
     val mapView = remember { MapView(context) }
-    val locationManager = remember {
-        context.getSystemService(android.content.Context.LOCATION_SERVICE) as LocationManager
+    val fusedLocationClient = remember {
+        LocationServices.getFusedLocationProviderClient(context)
     }
     var currentLocation by remember { mutableStateOf<Location?>(null) }
     var mapInstance by remember { mutableStateOf<MapLibreMap?>(null) }
@@ -70,7 +75,7 @@ fun MainMapScreen(
         try {
             val remoteLocations = RetrofitClient.instance.getLocationsForMap(mapId)
             locations = remoteLocations.map { 
-                LocationData(it.id, it.name, it.lat, it.lng, it.unlocked)
+                LocationData(it.id, it.name, it.lat, it.lng, it.description, it.unlocked)
             }
         } catch (e: Exception) {
             e.printStackTrace()
@@ -90,51 +95,39 @@ fun MainMapScreen(
         }
     }
 
-    DisposableEffect(locationManager, hasLocationPermission) {
+    DisposableEffect(hasLocationPermission) {
         if (!hasLocationPermission) {
             return@DisposableEffect onDispose { }
         }
 
-        val hasFine = context.checkSelfPermission(
-            Manifest.permission.ACCESS_FINE_LOCATION
-        ) == PackageManager.PERMISSION_GRANTED
-        val hasCoarse = context.checkSelfPermission(
-            Manifest.permission.ACCESS_COARSE_LOCATION
-        ) == PackageManager.PERMISSION_GRANTED
+        val locationRequest = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 2000L)
+            .setMinUpdateDistanceMeters(2f)
+            .build()
 
-        if (!hasFine && !hasCoarse) {
-            return@DisposableEffect onDispose { }
-        }
-
-        val provider = when {
-            locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER) -> LocationManager.GPS_PROVIDER
-            locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER) -> LocationManager.NETWORK_PROVIDER
-            else -> null
-        }
-
-        if (provider == null) {
-            return@DisposableEffect onDispose { }
-        }
-
-        val listener = android.location.LocationListener { location ->
-            currentLocation = location
+        val locationCallback = object : LocationCallback() {
+            override fun onLocationResult(result: LocationResult) {
+                result.lastLocation?.let { location ->
+                    currentLocation = location
+                }
+            }
         }
 
         try {
-            currentLocation = locationManager.getLastKnownLocation(provider)
-            locationManager.requestLocationUpdates(
-                provider,
-                2000L,
-                2f,
-                listener,
-                Looper.getMainLooper()
+            fusedLocationClient.lastLocation.addOnSuccessListener { location ->
+                if (location != null) {
+                    currentLocation = location
+                }
+            }
+            fusedLocationClient.requestLocationUpdates(
+                locationRequest,
+                locationCallback,
+                context.mainLooper
             )
         } catch (_: SecurityException) {
-
         }
 
         onDispose {
-            locationManager.removeUpdates(listener)
+            fusedLocationClient.removeLocationUpdates(locationCallback)
         }
     }
 
@@ -146,10 +139,9 @@ fun MainMapScreen(
     }
 
     LaunchedEffect(isStyleLoaded, locations, currentLocation, mapInstance) {
-        if (!isStyleLoaded) return@LaunchedEffect
-        val map = mapInstance ?: return@LaunchedEffect
+        if (!isStyleLoaded || mapInstance == null) return@LaunchedEffect
         val userLatLng = currentLocation?.let { LatLng(it.latitude, it.longitude) }
-        addMarkersToMap(context, map, locations, userLatLng, onLocationClick)
+        addMarkersToMap(context, mapInstance!!, locations, userLatLng, onLocationClick)
     }
 
     Box(modifier = Modifier.fillMaxSize()) {

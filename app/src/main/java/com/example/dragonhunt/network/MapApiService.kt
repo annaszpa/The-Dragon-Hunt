@@ -5,7 +5,9 @@ import com.example.dragonhunt.BuildConfig
 import okhttp3.OkHttpClient
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
+import retrofit2.http.Body
 import retrofit2.http.GET
+import retrofit2.http.POST
 import retrofit2.http.Path
 import java.util.concurrent.TimeUnit
 
@@ -14,6 +16,7 @@ data class RemoteLocation(
     val name: String,
     val lat: Double,
     val lng: Double,
+    val description: String = "",
     val unlocked: Boolean = false
 )
 
@@ -26,15 +29,25 @@ data class RemoteMap(
     val centerLng: Double
 )
 
+data class CreateMapRequest(
+    val name: String,
+    val description: String,
+    val locations: List<RemoteLocation>
+)
+
 interface MapApiService {
     @GET("maps")
     suspend fun getMaps(): List<RemoteMap>
+
+    @POST("maps")
+    suspend fun createMap(@Body request: CreateMapRequest): RemoteMap
 
     @GET("maps/{mapId}/locations")
     suspend fun getLocationsForMap(@Path("mapId") mapId: String): List<RemoteLocation>
 }
 
 object RetrofitClient {
+    
     private fun isEmulator(): Boolean {
         return Build.FINGERPRINT.startsWith("generic") ||
             Build.FINGERPRINT.startsWith("unknown") ||

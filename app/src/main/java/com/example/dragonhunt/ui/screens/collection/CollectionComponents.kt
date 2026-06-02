@@ -50,7 +50,7 @@ fun RouteExpandableCard(route: RouteCollection) {
                         letterSpacing = 1.sp
                     )
                     Text(
-                        text = "Dragons found: $unlockedCount/${route.dragons.size}",
+                        text = "Dragons found: $unlockedCount",
                         color = Color(0xFF5D4037),
                         fontSize = 14.sp
                     )
@@ -80,32 +80,56 @@ fun RouteExpandableCard(route: RouteCollection) {
 
 @Composable
 fun DragonListItem(dragon: DragonInfo) {
-    Row(
+    var expanded by remember { mutableStateOf(false) }
+
+    Column(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(8.dp))
-            .background(if (dragon.unlocked) Color(0xFFD4AF37).copy(alpha = 0.1f) else Color.LightGray.copy(alpha = 0.2f))
-            .padding(12.dp),
-        verticalAlignment = Alignment.CenterVertically
+            .background(Color(0xFFD4AF37).copy(alpha = 0.1f))
+            .clickable { expanded = !expanded }
+            .padding(12.dp)
     ) {
-        Text(
-            text = if (dragon.unlocked) "🐉" else "🔒",
-            fontSize = 24.sp,
-            modifier = Modifier.padding(end = 12.dp)
-        )
-        Column {
+        Row(
+            verticalAlignment = Alignment.CenterVertically
+        ) {
             Text(
-                text = if (dragon.unlocked) dragon.name else "???",
-                fontWeight = FontWeight.Bold,
-                color = if (dragon.unlocked) Color(0xFF2C1810) else Color.Gray,
-                fontSize = 16.sp
+                text = "🐉",
+                fontSize = 24.sp,
+                modifier = Modifier.padding(end = 12.dp)
             )
-            if (dragon.unlocked) {
+            Column {
+                Text(
+                    text = dragon.name,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF2C1810),
+                    fontSize = 16.sp
+                )
+                if (!expanded) {
+                    Text(
+                        text = "Tap to learn more...",
+                        color = Color(0xFF8B4513).copy(alpha = 0.6f),
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+            }
+        }
+
+        AnimatedVisibility(
+            visible = expanded,
+            enter = expandVertically() + fadeIn(),
+            exit = shrinkVertically() + fadeOut()
+        ) {
+            Column(modifier = Modifier.padding(top = 12.dp, start = 40.dp)) {
+                HorizontalDivider(color = Color(0xFFD4AF37).copy(alpha = 0.3f), thickness = 1.dp)
+                Spacer(modifier = Modifier.height(8.dp))
                 Text(
                     text = dragon.description,
                     color = Color(0xFF5D4037),
-                    fontSize = 12.sp,
-                    lineHeight = 16.sp
+                    fontSize = 13.sp,
+                    lineHeight = 18.sp,
+                    fontWeight = FontWeight.Normal
                 )
             }
         }

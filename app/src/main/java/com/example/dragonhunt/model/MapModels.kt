@@ -7,6 +7,7 @@ data class LocationData(
     val name: String,
     val lat: Double,
     val lng: Double,
+    val description: String = "",
     val unlocked: Boolean = false
 )
 

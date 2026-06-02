@@ -50,13 +50,16 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.dragonhunt.model.LocationData
+import kotlin.math.sqrt
 
 @Composable
 fun ChallengeScreen(
-    dragonName: String,
+    location: LocationData?,
     onBack: () -> Unit,
-    onUnlocked: () -> Unit
+    onUnlocked: (LocationData) -> Unit
 ) {
+    val dragonName = location?.name.orEmpty()
     var shakeCount by remember(dragonName) { mutableIntStateOf(0) }
     val maxShakes = 10
     val progress = (shakeCount.toFloat() / maxShakes.toFloat()).coerceIn(0f, 1f)
@@ -210,7 +213,8 @@ fun ChallengeScreen(
 
                 if (shakeCount >= maxShakes) {
                     Button(
-                        onClick = onUnlocked,
+                        onClick = { location?.let(onUnlocked) },
+                        enabled = location != null,
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(56.dp),
