@@ -17,6 +17,7 @@ import com.example.dragonhunt.model.MapData
 @Composable
 fun MapCard(
     map: MapData,
+    foundCount: Int,
     onClick: () -> Unit
 ) {
     Card(
@@ -55,7 +56,7 @@ fun MapCard(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text("🐉 ", fontSize = 14.sp)
                     Text(
-                        text = "${map.dragonsCount} DRAGONS TO FIND",
+                        text = "YOU FOUND $foundCount/${map.dragonsCount} DRAGONS",
                         fontSize = 12.sp,
                         color = Color(0xFF8B0000),
                         fontWeight = FontWeight.ExtraBold,

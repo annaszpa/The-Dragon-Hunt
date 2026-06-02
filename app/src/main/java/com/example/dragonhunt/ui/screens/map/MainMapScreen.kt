@@ -32,6 +32,7 @@ import org.maplibre.android.maps.Style
 @Composable
 fun MainMapScreen(
     mapId: String,
+    progressRepository: com.example.dragonhunt.data.ProgressRepository,
     onBack: () -> Unit,
     onLocationClick: (LocationData) -> Unit,
     onCollectionClick: () -> Unit
@@ -59,6 +60,11 @@ fun MainMapScreen(
             result[Manifest.permission.ACCESS_COARSE_LOCATION] == true
     }
     val fallbackCenter = LatLng(50.0619, 19.9368)
+
+    val unlockedEntities by progressRepository.observeAllUnlocked().collectAsState(initial = emptyList())
+    val unlockedIdentifiers = remember(unlockedEntities) {
+        (unlockedEntities.map { it.locationId } + unlockedEntities.map { it.locationName }).distinct()
+    }
 
     LaunchedEffect(Unit) {
         if (!hasLocationPermission) {
@@ -138,10 +144,10 @@ fun MainMapScreen(
         map.animateCamera(CameraUpdateFactory.newLatLng(userLatLng))
     }
 
-    LaunchedEffect(isStyleLoaded, locations, currentLocation, mapInstance) {
+    LaunchedEffect(isStyleLoaded, locations, currentLocation, mapInstance, unlockedIdentifiers) {
         if (!isStyleLoaded || mapInstance == null) return@LaunchedEffect
         val userLatLng = currentLocation?.let { LatLng(it.latitude, it.longitude) }
-        addMarkersToMap(context, mapInstance!!, locations, userLatLng, onLocationClick)
+        addMarkersToMap(context, mapInstance!!, locations, userLatLng, unlockedIdentifiers, onLocationClick)
     }
 
     Box(modifier = Modifier.fillMaxSize()) {

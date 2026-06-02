@@ -48,6 +48,7 @@ class MainActivity : ComponentActivity() {
                     )
 
                     "map_selection" -> MapSelectionScreen(
+                        progressRepository = progressRepository,
                         onMapSelected = { map ->
                             selectedMap = map
                             currentScreen = "main_map"
@@ -91,6 +92,7 @@ class MainActivity : ComponentActivity() {
 
                     "main_map" -> MainMapScreen(
                         mapId = selectedMap?.id ?: "wawel-server",
+                        progressRepository = progressRepository,
                         onBack = {
                             currentScreen = "map_selection"
                         },

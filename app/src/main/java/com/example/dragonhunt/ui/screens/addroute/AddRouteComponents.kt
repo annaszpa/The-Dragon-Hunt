@@ -150,7 +150,8 @@ fun DragonConfigCard(
                     unfocusedBorderColor = Color.Gray.copy(alpha = 0.3f),
                     focusedTextColor = Color.Black,
                     unfocusedTextColor = Color.Black,
-                    focusedLabelColor = Color(0xFF8B0000)
+                    focusedLabelColor = Color(0xFF8B0000),
+                    unfocusedLabelColor = Color.Gray
                 )
             )
 
@@ -173,7 +174,8 @@ fun DragonConfigCard(
                         unfocusedBorderColor = Color.Gray.copy(alpha = 0.3f),
                         focusedTextColor = Color.Black,
                         unfocusedTextColor = Color.Black,
-                        focusedLabelColor = Color(0xFF8B0000)
+                        focusedLabelColor = Color(0xFF8B0000),
+                        unfocusedLabelColor = Color.Gray
                     )
                 )
                 OutlinedTextField(
@@ -188,7 +190,8 @@ fun DragonConfigCard(
                         unfocusedBorderColor = Color.Gray.copy(alpha = 0.3f),
                         focusedTextColor = Color.Black,
                         unfocusedTextColor = Color.Black,
-                        focusedLabelColor = Color(0xFF8B0000)
+                        focusedLabelColor = Color(0xFF8B0000),
+                        unfocusedLabelColor = Color.Gray
                     )
                 )
                 
@@ -220,7 +223,8 @@ fun DragonConfigCard(
                     unfocusedBorderColor = Color.Gray.copy(alpha = 0.3f),
                     focusedTextColor = Color.Black,
                     unfocusedTextColor = Color.Black,
-                    focusedLabelColor = Color(0xFF8B0000)
+                    focusedLabelColor = Color(0xFF8B0000),
+                    unfocusedLabelColor = Color.Gray
                 )
             )
         }
@@ -379,7 +383,9 @@ fun LocationPickerOverlay(
                 ) {
                     OutlinedButton(
                         onClick = onDismiss,
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier.weight(1f),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFF8B0000)),
+                        border = BorderStroke(1.dp, Color(0xFF8B0000).copy(alpha = 0.5f))
                     ) {
                         Text("CANCEL")
                     }

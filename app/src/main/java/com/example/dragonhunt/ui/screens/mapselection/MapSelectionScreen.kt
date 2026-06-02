@@ -27,12 +27,15 @@ import com.example.dragonhunt.network.RetrofitClient
 
 @Composable
 fun MapSelectionScreen(
+    progressRepository: com.example.dragonhunt.data.ProgressRepository,
     onMapSelected: (MapData) -> Unit,
     onCollectionClick: () -> Unit,
     onAddRouteClick: () -> Unit
 ) {
     var maps by remember { mutableStateOf<List<MapData>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
+
+    val unlockedEntities by progressRepository.observeAllUnlocked().collectAsState(initial = emptyList())
 
     LaunchedEffect(Unit) {
         try {
@@ -78,7 +81,12 @@ fun MapSelectionScreen(
                         contentPadding = PaddingValues(vertical = 8.dp)
                     ) {
                         items(maps) { map ->
-                            MapCard(map = map, onClick = { onMapSelected(map) })
+                            val foundCount = unlockedEntities.count { it.mapId == map.id }
+                            MapCard(
+                                map = map, 
+                                foundCount = foundCount,
+                                onClick = { onMapSelected(map) }
+                            )
                         }
                     }
                 }

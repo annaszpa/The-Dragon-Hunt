@@ -20,6 +20,7 @@ internal fun addMarkersToMap(
     map: MapLibreMap,
     locations: List<LocationData>,
     userLocation: LatLng?,
+    unlockedIds: List<String>,
     onLocationClick: (LocationData) -> Unit
 ) {
     map.clear()
@@ -32,15 +33,30 @@ internal fun addMarkersToMap(
     val farIcon = IconFactory.getInstance(context).fromBitmap(
         createPinBitmap(Color(0xFF9E9E9E).toArgb(), pinSize)
     )
+    val unlockedIcon = IconFactory.getInstance(context).fromBitmap(
+        createPinBitmap(Color(0xFFD4AF37).toArgb(), pinSize)
+    )
 
     locations.forEach { loc ->
         val distance = userLocation?.let { distanceMeters(it, loc) }
         val isNear = distance != null && distance <= ACTIVATION_RADIUS_METERS
+
+        val isUnlocked = loc.unlocked || unlockedIds.any { 
+            it.trim().equals(loc.id.trim(), ignoreCase = true) || 
+            it.trim().equals(loc.name.trim(), ignoreCase = true) 
+        }
+
+        val icon = when {
+            isUnlocked -> unlockedIcon
+            isNear -> nearIcon
+            else -> farIcon
+        }
+
         map.addMarker(
             MarkerOptions()
                 .position(LatLng(loc.lat, loc.lng))
                 .title(loc.name)
-                .icon(if (isNear) nearIcon else farIcon)
+                .icon(icon)
         )
     }
 
